@@ -1,0 +1,381 @@
+import { useMemo, useState } from 'react';
+import { channels, movies, series, defaultSettings } from './data/mockData';
+import type { Channel, Language, SettingsState } from './types';
+
+const translations = {
+  en: {
+    appName: 'Prime IPTV',
+    live: 'Live TV',
+    movies: 'Movies',
+    series: 'Series',
+    favorites: 'Favorites',
+    recordings: 'Recordings',
+    settings: 'Settings',
+    searchPlaceholder: 'Search channel or category',
+    nowWatching: 'Now Watching',
+    continueWatching: 'Continue Watching',
+    featured: 'Featured',
+    epg: 'TV Guide',
+    allChannels: 'All Channels',
+    sports: 'Sports',
+    news: 'News',
+    kids: 'Kids',
+    documentaries: 'Documentary',
+    entertainment: 'Entertainment',
+    addFav: 'Add to favorites',
+    removeFav: 'Remove favorite',
+    settingsTitle: 'Playlist & account settings',
+    playlistUrl: 'Playlist URL',
+    xtreamUrl: 'Xtream URL',
+    username: 'Username',
+    password: 'Password',
+    parentalLock: 'Parental lock',
+    autoplay: 'Auto play',
+    theme: 'Theme',
+    save: 'Save changes',
+    close: 'Close',
+    recent: 'Recently Added',
+    streamNow: 'Watch Now',
+    category: 'Category',
+    language: 'Language',
+    quality: 'Quality',
+  },
+  ar: {
+    appName: 'برايم IPTV',
+    live: 'التلفزيون المباشر',
+    movies: 'الأفلام',
+    series: 'المسلسلات',
+    favorites: 'المفضلة',
+    recordings: 'التسجيلات',
+    settings: 'الإعدادات',
+    searchPlaceholder: 'ابحث عن قناة أو فئة',
+    nowWatching: 'يشاهد الآن',
+    continueWatching: 'متابعة المشاهدة',
+    featured: 'مميز',
+    epg: 'جدول البرامج',
+    allChannels: 'جميع القنوات',
+    sports: 'الرياضة',
+    news: 'الأخبار',
+    kids: 'الأطفال',
+    documentaries: 'الوثائقي',
+    entertainment: 'الترفيه',
+    addFav: 'أضف إلى المفضلة',
+    removeFav: 'إزالة من المفضلة',
+    settingsTitle: 'إعدادات قائمة التشغيل والحساب',
+    playlistUrl: 'رابط القائمة',
+    xtreamUrl: 'رابط Xtream',
+    username: 'اسم المستخدم',
+    password: 'كلمة المرور',
+    parentalLock: 'قفل الوالدين',
+    autoplay: 'التشغيل التلقائي',
+    theme: 'السمة',
+    save: 'حفظ التغييرات',
+    close: 'إغلاق',
+    recent: 'أضيف حديثًا',
+    streamNow: 'شاهد الآن',
+    category: 'الفئة',
+    language: 'اللغة',
+    quality: 'الجودة',
+  },
+} as const;
+
+const categories = ['All', 'News', 'Sports', 'Movies', 'Kids', 'Documentary', 'Entertainment'];
+
+function App() {
+  const [language, setLanguage] = useState<Language>('en');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [search, setSearch] = useState('');
+  const [favorites, setFavorites] = useState<number[]>([1, 5]);
+  const [activeChannel, setActiveChannel] = useState<Channel | null>(channels[0]);
+  const [settings, setSettings] = useState<SettingsState>({ ...defaultSettings });
+  const [showSettings, setShowSettings] = useState(false);
+  const [showPlayer, setShowPlayer] = useState(false);
+
+  const t = translations[language];
+  const isRtl = language === 'ar';
+
+  const filteredChannels = useMemo(() => {
+    return channels.filter((channel) => {
+      const matchesCategory = selectedCategory === 'All' || channel.category === selectedCategory;
+      const searchText = `${channel.name} ${channel.category} ${channel.tags.join(' ')}`.toLowerCase();
+      const matchesSearch = searchText.includes(search.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [search, selectedCategory]);
+
+  const favoriteChannels = channels.filter((channel) => favorites.includes(channel.id));
+
+  const toggleFavorite = (channelId: number) => {
+    setFavorites((prev) =>
+      prev.includes(channelId) ? prev.filter((id) => id !== channelId) : [...prev, channelId],
+    );
+  };
+
+  const handlePlay = (channel: Channel) => {
+    setActiveChannel(channel);
+    setShowPlayer(true);
+  };
+
+  const updateSetting = <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
+    setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  return (
+    <div className={`app-shell ${isRtl ? 'rtl' : 'ltr'}`} dir={isRtl ? 'rtl' : 'ltr'}>
+      <aside className="sidebar">
+        <div className="brand-block">
+          <div className="brand-icon">📺</div>
+          <div>
+            <p className="brand-label">Prime</p>
+            <h1>{t.appName}</h1>
+          </div>
+        </div>
+
+        <nav className="nav-menu">
+          {[
+            { id: 'live', label: t.live, icon: '📡' },
+            { id: 'movies', label: t.movies, icon: '🎬' },
+            { id: 'series', label: t.series, icon: '📺' },
+            { id: 'favorites', label: t.favorites, icon: '⭐' },
+            { id: 'recordings', label: t.recordings, icon: '🗂️' },
+            { id: 'settings', label: t.settings, icon: '⚙️' },
+          ].map((item) => (
+            <button key={item.id} className="nav-item" type="button" onClick={() => item.id === 'settings' && setShowSettings(true)}>
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="mini-card">
+          <p>{t.nowWatching}</p>
+          <h3>{activeChannel?.name ?? 'No channel selected'}</h3>
+          <button type="button" onClick={() => activeChannel && handlePlay(activeChannel)}>
+            {t.streamNow}
+          </button>
+        </div>
+      </aside>
+
+      <main className="content-area">
+        <header className="topbar">
+          <div className="search-wrap">
+            <span>🔎</span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t.searchPlaceholder}
+            />
+          </div>
+
+          <div className="toolbar-actions">
+            <button className="button ghost" type="button" onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}>
+              {language === 'en' ? 'العربية' : 'English'}
+            </button>
+            <button className="button primary" type="button" onClick={() => setShowSettings(true)}>
+              {t.settings}
+            </button>
+          </div>
+        </header>
+
+        <section className="hero-card">
+          <div className="hero-copy">
+            <span className="eyebrow">{t.featured}</span>
+            <h2>{activeChannel?.name}</h2>
+            <p>
+              {activeChannel?.category} • {activeChannel?.quality} • {activeChannel?.language}
+            </p>
+            <div className="hero-actions">
+              <button type="button" className="button primary" onClick={() => activeChannel && handlePlay(activeChannel)}>
+                {t.streamNow}
+              </button>
+              <button type="button" className="button ghost" onClick={() => activeChannel && toggleFavorite(activeChannel.id)}>
+                {favorites.includes(activeChannel?.id ?? -1) ? t.removeFav : t.addFav}
+              </button>
+            </div>
+          </div>
+          <div className="hero-visual">{activeChannel?.logo}</div>
+        </section>
+
+        <section className="section-block">
+          <div className="section-header">
+            <h3>{t.live}</h3>
+            <div className="chip-group">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  className={`chip ${selectedCategory === category ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {category === 'All' ? t.allChannels : category}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="channel-grid">
+            {filteredChannels.map((channel) => (
+              <article key={channel.id} className="channel-card">
+                <div className="card-top">
+                  <div className="logo-badge">{channel.logo}</div>
+                  <button type="button" className="favorite-button" onClick={() => toggleFavorite(channel.id)}>
+                    {favorites.includes(channel.id) ? '★' : '☆'}
+                  </button>
+                </div>
+
+                <div className="channel-body">
+                  <h4>{channel.name}</h4>
+                  <p>
+                    {channel.category} • {channel.quality}
+                  </p>
+                  <div className="tag-row">
+                    {channel.tags.slice(0, 2).map((tag) => (
+                      <span key={tag}>{tag}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="card-footer">
+                  <span>{channel.language}</span>
+                  <button type="button" onClick={() => handlePlay(channel)}>
+                    {t.streamNow}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="dual-grid">
+          <div className="panel">
+            <div className="section-header compact">
+              <h3>{t.continueWatching}</h3>
+            </div>
+
+            <div className="list-stack">
+              {movies.slice(0, 3).map((movie) => (
+                <div key={movie.id} className="watch-row">
+                  <div className="watch-badge">{movie.poster}</div>
+                  <div>
+                    <strong>{movie.title}</strong>
+                    <p>{movie.genre}</p>
+                  </div>
+                  <span>{movie.duration}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="section-header compact">
+              <h3>{t.epg}</h3>
+            </div>
+
+            <div className="list-stack">
+              {channels[0].epg.map((epgItem, index) => (
+                <div key={`${epgItem.title}-${index}`} className="epg-row">
+                  <div>
+                    <strong>{epgItem.title}</strong>
+                    <p>{channels[0].name}</p>
+                  </div>
+                  <span>
+                    {epgItem.start} - {epgItem.end}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section-block">
+          <div className="section-header">
+            <h3>{t.favorites}</h3>
+          </div>
+
+          <div className="mini-grid">
+            {favoriteChannels.map((channel) => (
+              <div key={channel.id} className="mini-card-item" onClick={() => handlePlay(channel)}>
+                <span>{channel.logo}</span>
+                <div>
+                  <strong>{channel.name}</strong>
+                  <small>{channel.category}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      {showSettings && (
+        <div className="modal-backdrop" onClick={() => setShowSettings(false)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{t.settingsTitle}</h3>
+              <button type="button" onClick={() => setShowSettings(false)} className="button ghost">
+                {t.close}
+              </button>
+            </div>
+
+            <div className="settings-grid">
+              <label>
+                <span>{t.playlistUrl}</span>
+                <input value={settings.playlistUrl} onChange={(e) => updateSetting('playlistUrl', e.target.value)} />
+              </label>
+              <label>
+                <span>{t.xtreamUrl}</span>
+                <input value={settings.xtreamUrl} onChange={(e) => updateSetting('xtreamUrl', e.target.value)} />
+              </label>
+              <label>
+                <span>{t.username}</span>
+                <input value={settings.username} onChange={(e) => updateSetting('username', e.target.value)} />
+              </label>
+              <label>
+                <span>{t.password}</span>
+                <input type="password" value={settings.password} onChange={(e) => updateSetting('password', e.target.value)} />
+              </label>
+              <label className="checkbox-row">
+                <input type="checkbox" checked={settings.parentalLock} onChange={(e) => updateSetting('parentalLock', e.target.checked)} />
+                <span>{t.parentalLock}</span>
+              </label>
+              <label className="checkbox-row">
+                <input type="checkbox" checked={settings.autoplay} onChange={(e) => updateSetting('autoplay', e.target.checked)} />
+                <span>{t.autoplay}</span>
+              </label>
+            </div>
+
+            <button type="button" className="button primary full-width" onClick={() => setShowSettings(false)}>
+              {t.save}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showPlayer && activeChannel && (
+        <div className="modal-backdrop" onClick={() => setShowPlayer(false)}>
+          <div className="player-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="player-header">
+              <div>
+                <span>{t.live}</span>
+                <h3>{activeChannel.name}</h3>
+              </div>
+              <button type="button" className="button ghost" onClick={() => setShowPlayer(false)}>
+                {t.close}
+              </button>
+            </div>
+
+            <video controls autoPlay className="player-video" src={activeChannel.streamUrl} />
+
+            <div className="player-meta">
+              <span>{activeChannel.category}</span>
+              <span>{activeChannel.quality}</span>
+              <span>{activeChannel.language}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
